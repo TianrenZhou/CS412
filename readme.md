@@ -12,3 +12,6 @@ Following instructions in https://towardsdatascience.com/mercari-price-suggestio
 4. each one of us explain one model. (methdology part)
 ### Monday 12.06
 1. conclusion discussion
+
+## related links:
+https://stackoverflow.com/questions/39170169/identical-dimensions-for-train-and-test-matrices-in-text-analysis padding sparse vectors
