@@ -22,7 +22,7 @@ for i in tqdm(alpha):
     model = Ridge(solver="auto", random_state=42, alpha=i)
     model.fit(x_train, y_train)
 ridge_preds_tr = model.predict(x_train)
-print(ridge_preds_tr)
+print(ridge_preds_tr.dtype)
 fselect = SelectKBest(f_regression, k=200)
 train_features = fselect.fit_transform(train_sparse, y_train)
 x_train = hstack((df_num.values, ridge_preds_tr.reshape(-1,1), train_features)).tocsr()

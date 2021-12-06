@@ -14,6 +14,7 @@ from scipy.sparse import hstack
 from tqdm import tqdm
 from sklearn.linear_model import Ridge
 from sklearn.feature_selection import SelectKBest, f_regression
+from matplotlib.pyplot import figure
 
 
 df = pd.read_csv('categorical.csv')
@@ -33,8 +34,8 @@ x_train_pre = hstack((df_num.values,train_sparse)).tocsr()
 y_train_pre = np.log1p(pd.read_csv('train.csv')['SalePrice'])
 #x_train_pre.drop(['price'], axis=1, inplace=True)
 x_train, x_cv, y_train, y_cv = train_test_split(x_train_pre, y_train_pre, test_size=0.1, random_state=66)
-x_test = hstack((df_num_test.values,train_sparse_test)).tocsr()
-print('Train size: {}, CV size: {}, test size: {}' .format(x_train.shape, x_cv.shape, x_test.shape))
+#x_test = hstack((df_num_test.values,train_sparse_test)).tocsr()
+#print('Train size: {}, CV size: {}, test size: {}' .format(x_train.shape, x_cv.shape, x_test.shape))
 
 # first ridge fitting
 alpha = list(np.arange(0, 10, 0.5))
@@ -107,7 +108,7 @@ for i, txt in enumerate(np.round(cv_rmsle,3)):
 plt.title("Cross Validation Error for each c")
 plt.xlabel("C")
 plt.ylabel("Error")
-plt.show()
+plt.savefig('Best_C1.png')
 
 
 # second SVM
@@ -129,7 +130,7 @@ for i, txt in enumerate(np.round(cv_rmsle,3)):
 plt.title("Cross Validation Error for each c")
 plt.xlabel("C")
 plt.ylabel("Error")
-plt.show()
+plt.savefig('Best_C2.png')
 
 
 # SVM train and cv results
@@ -144,82 +145,82 @@ print("SVM Cross validation RMSLE: ", svm_rmsle)
 
 
 # random forest train and cv results
-model = RandomForestRegressor(max_depth = 50, random_state=66)
-model.fit(x_train, y_train)
-rf_preds_train = model.predict(x_train)
-rf_preds_cv = model.predict(x_cv)
-print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, rf_preds_train, squared=True)))
-rf_rmsle = np.sqrt(mean_squared_error(y_cv, rf_preds_cv, squared=True))
-print("Cross validation RMSLE: ", rf_rmsle)
-
-
-# lightGBM train
-lgb_model = LGBMRegressor()
-params = {'learning_rate': uniform(0, 1),
-          'n_estimators': sp_randint(200, 1500),
-          'num_leaves': sp_randint(20, 200),
-          'max_depth': sp_randint(2, 15),
-          'min_child_weight': uniform(0, 2),
-          'colsample_bytree': uniform(0, 1),
-         }
-lgb_random = RandomizedSearchCV(lgb_model, param_distributions=params, n_iter=10, cv=3, random_state=66, 
-                                scoring='neg_root_mean_squared_error', verbose=10, return_train_score=True)
-lgb_random = lgb_random.fit(x_train, y_train)
-best_params = lgb_random.best_params_
-print('best params are:', best_params)
-
-
-# lightGBM cv
-model = LGBMRegressor(**best_params, random_state=66, n_jobs=-1)
-model.fit(x_train, y_train)
-lgb_preds_tr = model.predict(x_train)
-lgb_preds_cv = model.predict(x_cv)
-print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, lgb_preds_tr, squared=True)))
-lgb_rmsle = np.sqrt(mean_squared_error(y_cv, lgb_preds_cv, squared=True))
-print("Cross validation RMSLE: ", lgb_rmsle)
-
-
-# build test
-
-# print("Best alpha: ",  alpha[best_alpha])
-# model = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
+# model = RandomForestRegressor(max_depth = 50, random_state=66)
 # model.fit(x_train, y_train)
-# model2 = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
-# model2.fit(x_train_pre, y_train_pre)
-# ridge_preds_train = model.predict(x_train)
-# ridge_preds_train2 = model2.predict(x_train)
-# print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, ridge_preds_train, squared=True)))
-# ridge_rmsle = np.sqrt(mean_squared_error(y_train, ridge_preds_train2, squared=True))
-# print("Cross validation RMSLE: ", ridge_rmsle)
+# rf_preds_train = model.predict(x_train)
+# rf_preds_cv = model.predict(x_cv)
+# print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, rf_preds_train, squared=True)))
+# rf_rmsle = np.sqrt(mean_squared_error(y_cv, rf_preds_cv, squared=True))
+# print("Cross validation RMSLE: ", rf_rmsle)
 
 
-ids = np.array(list(range(1461, 2920)))
+# # lightGBM train
+# lgb_model = LGBMRegressor()
+# params = {'learning_rate': uniform(0, 1),
+#           'n_estimators': sp_randint(200, 1500),
+#           'num_leaves': sp_randint(20, 200),
+#           'max_depth': sp_randint(2, 15),
+#           'min_child_weight': uniform(0, 2),
+#           'colsample_bytree': uniform(0, 1),
+#          }
+# lgb_random = RandomizedSearchCV(lgb_model, param_distributions=params, n_iter=10, cv=3, random_state=66, 
+#                                 scoring='neg_root_mean_squared_error', verbose=10, return_train_score=True)
+# lgb_random = lgb_random.fit(x_train, y_train)
+# best_params = lgb_random.best_params_
+# print('best params are:', best_params)
 
-model = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
-model.fit(x_train_pre, y_train_pre)
-ridge_preds_test = np.expm1(model.predict(x_test))
-ridge_preds_test = np.stack((ids, ridge_preds_test), axis=1)
-np.savetxt('ridge_result.csv', ridge_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
-#print('Ridge Test RMSLE:', np.sqrt(mean_squared_error(y_test, ridge_preds_test, squared=True)))
+
+# # lightGBM cv
+# model = LGBMRegressor(**best_params, random_state=66, n_jobs=-1)
+# model.fit(x_train, y_train)
+# lgb_preds_tr = model.predict(x_train)
+# lgb_preds_cv = model.predict(x_cv)
+# print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, lgb_preds_tr, squared=True)))
+# lgb_rmsle = np.sqrt(mean_squared_error(y_cv, lgb_preds_cv, squared=True))
+# print("Cross validation RMSLE: ", lgb_rmsle)
 
 
-model = SVR(C=c[best_c])
-model.fit(x_train_pre, y_train_pre)
-svm_preds_test= np.expm1(model.predict(x_test))
-svm_preds_test = np.stack((ids, svm_preds_test), axis=1)
-np.savetxt('svm_preds_test.csv', svm_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
-#print('SVM Test RMSLE:', np.sqrt(mean_squared_error(y_test, svm_preds_test, squared=True)))
+# # build test
 
-model = RandomForestRegressor(max_depth = 50, random_state=66)
-model.fit(x_train_pre, y_train_pre)
-rf_preds_test= np.expm1(model.predict(x_test))
-rf_preds_test = np.stack((ids, rf_preds_test), axis=1)
-np.savetxt('rf_preds_test.csv', rf_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
-#print('Random Forest Test RMSLE:', np.sqrt(mean_squared_error(y_test, rf_preds_test, squared=True)))
+# # print("Best alpha: ",  alpha[best_alpha])
+# # model = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
+# # model.fit(x_train, y_train)
+# # model2 = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
+# # model2.fit(x_train_pre, y_train_pre)
+# # ridge_preds_train = model.predict(x_train)
+# # ridge_preds_train2 = model2.predict(x_train)
+# # print('Train RMSLE:', np.sqrt(mean_squared_error(y_train, ridge_preds_train, squared=True)))
+# # ridge_rmsle = np.sqrt(mean_squared_error(y_train, ridge_preds_train2, squared=True))
+# # print("Cross validation RMSLE: ", ridge_rmsle)
 
-model = LGBMRegressor(**best_params, random_state=66, n_jobs=-1)
-model.fit(x_train_pre, y_train_pre)
-lgb_preds_test= np.expm1(model.predict(x_test))
-lgb_preds_test = np.stack((ids, lgb_preds_test), axis=1)
-np.savetxt('lgb_preds_test.csv', lgb_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
-#print('LGB Test RMSLE:', np.sqrt(mean_squared_error(y_test, lgb_preds_test, squared=True)))
+
+# ids = np.array(list(range(1461, 2920)))
+
+# model = Ridge(solver="auto", random_state=66, alpha=alpha[best_alpha])
+# model.fit(x_train_pre, y_train_pre)
+# ridge_preds_test = np.expm1(model.predict(x_test))
+# ridge_preds_test = np.stack((ids, ridge_preds_test), axis=1)
+# np.savetxt('ridge_result.csv', ridge_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
+# #print('Ridge Test RMSLE:', np.sqrt(mean_squared_error(y_test, ridge_preds_test, squared=True)))
+
+
+# model = SVR(C=c[best_c])
+# model.fit(x_train_pre, y_train_pre)
+# svm_preds_test= np.expm1(model.predict(x_test))
+# svm_preds_test = np.stack((ids, svm_preds_test), axis=1)
+# np.savetxt('svm_preds_test.csv', svm_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
+# #print('SVM Test RMSLE:', np.sqrt(mean_squared_error(y_test, svm_preds_test, squared=True)))
+
+# model = RandomForestRegressor(max_depth = 50, random_state=66)
+# model.fit(x_train_pre, y_train_pre)
+# rf_preds_test= np.expm1(model.predict(x_test))
+# rf_preds_test = np.stack((ids, rf_preds_test), axis=1)
+# np.savetxt('rf_preds_test.csv', rf_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
+# #print('Random Forest Test RMSLE:', np.sqrt(mean_squared_error(y_test, rf_preds_test, squared=True)))
+
+# model = LGBMRegressor(**best_params, random_state=66, n_jobs=-1)
+# model.fit(x_train_pre, y_train_pre)
+# lgb_preds_test= np.expm1(model.predict(x_test))
+# lgb_preds_test = np.stack((ids, lgb_preds_test), axis=1)
+# np.savetxt('lgb_preds_test.csv', lgb_preds_test, delimiter=",", fmt='%i, %f', header="Id,SalePrice", comments='')
+# #print('LGB Test RMSLE:', np.sqrt(mean_squared_error(y_test, lgb_preds_test, squared=True)))
